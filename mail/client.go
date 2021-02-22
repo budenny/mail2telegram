@@ -9,8 +9,6 @@ import (
 	imapClient "github.com/emersion/go-imap/client"
 )
 
-//VSBTODO: client lock
-
 // Client is facade for IMAP client
 type Client struct {
 	Imap *imapClient.Client
@@ -60,7 +58,7 @@ func (client *Client) WaitNewMsgs(msgs chan<- *Message, pollInterval time.Durati
 			_, ok := update.(*imapClient.MailboxUpdate)
 			if ok {
 				log.Println("Got Mailbox update")
-				for _, msg := range client.fetchUnseenMsgs() {
+				for _, msg := range client.FetchUnseenMsgs() {
 					msgs <- msg
 				}
 			}
@@ -75,7 +73,8 @@ func (client *Client) WaitNewMsgs(msgs chan<- *Message, pollInterval time.Durati
 
 }
 
-func (client *Client) fetchUnseenMsgs() []*Message {
+// FetchUnseenMsgs ...
+func (client *Client) FetchUnseenMsgs() []*Message {
 	uids := client.searchUnSseenMsgs()
 	if len(uids) > 0 {
 		return client.fetchMsgs(uids)
@@ -104,7 +103,7 @@ func (client *Client) fetchMsgs(seqNums []uint32) []*Message {
 		log.Fatal(err)
 	}
 
-	log.Println("Done!")
+	log.Println("Fetch mails: Done!")
 	return out
 }
 
