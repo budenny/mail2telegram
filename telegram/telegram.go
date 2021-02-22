@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 // API provides basic telegram functionality
@@ -29,6 +31,11 @@ type reqBody struct {
 
 // SendMessage ...
 func (api *API) SendMessage(text string) {
+
+	// odd numbers of "_" break Telegram parser in "markdown" mode
+	// so let's workarund it
+	text = strings.Replace(text, "_", "\\_", -1)
+
 	req := &reqBody{
 		ChatID:    api.chatID,
 		Text:      text,
@@ -40,14 +47,21 @@ func (api *API) SendMessage(text string) {
 		log.Fatal(err)
 	}
 
+	log.Printf("Sending Message: '%s'\n", text)
+
 	res, err := http.Post(api.sendURI, "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if res.StatusCode != http.StatusOK {
-		log.Fatal("unexpected status" + res.Status)
+		body, err := ioutil.ReadAll(res.Body)
+		bodyStr := ""
+		if err == nil {
+			bodyStr = string(body)
+		}
+		log.Fatalf("Send Message: unexpected status: %v\nResp:%v", res.Status, bodyStr)
 	}
 
-	log.Printf("Sent Message: '%s'\n", text)
+	log.Println("Message sent")
 }
