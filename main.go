@@ -13,26 +13,20 @@ func main() {
 
 	telegramAPI := telegram.NewAPI(conf.TelegramChatID, conf.TelegramBotToken)
 
-	mailClient := mail.NewClient(conf.ImapHost, conf.ImapUser, conf.ImapPassword)
-	defer mailClient.Logout()
+	for {
+		mailClient := mail.NewClient(conf.ImapHost, conf.ImapUser, conf.ImapPassword)
 
-	forwardMsg := func(msg *mail.Message) {
-		text := fmt.Sprintf("*%s*:\n%s", msg.Subject, msg.Body)
-		telegramAPI.SendMessage(text)
-		mailClient.MarkMsgSeen(msg)
-	}
+		forwardMsg := func(msg *mail.Message) {
+			text := fmt.Sprintf("*%s*:\n%s", msg.Subject, msg.Body)
+			telegramAPI.SendMessage(text)
+			mailClient.MarkMsgSeen(msg)
+		}
 
-	for _, msg := range mailClient.FetchUnseenMsgs() {
-		forwardMsg(msg)
-	}
-
-	msgs := make(chan *mail.Message)
-
-	go func() {
-		for msg := range msgs {
+		for _, msg := range mailClient.FetchUnseenMsgs() {
 			forwardMsg(msg)
 		}
-	}()
 
-	mailClient.WaitNewMsgs(msgs, conf.ImapPollInterval)
+		mailClient.WaitNewMsgs(conf.ImapPollInterval)
+		mailClient.Logout()
+	}
 }

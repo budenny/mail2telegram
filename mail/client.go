@@ -41,36 +41,37 @@ func (client *Client) MarkMsgSeen(msg *Message) {
 }
 
 // WaitNewMsgs ...
-func (client *Client) WaitNewMsgs(msgs chan<- *Message, pollInterval time.Duration) {
+func (client *Client) WaitNewMsgs(pollInterval time.Duration) {
 	idleClient := idle.NewClient(client.Imap)
 
-	updates := make(chan imapClient.Update)
+	updates := make(chan imapClient.Update, 10)
 	client.Imap.Updates = updates
 
 	done := make(chan error, 1)
+	stop := make(chan struct{})
 	go func() {
-		done <- idleClient.IdleWithFallback(nil, pollInterval)
+		done <- idleClient.IdleWithFallback(stop, pollInterval)
 	}()
 
+waitLoop:
 	for {
 		select {
 		case update := <-updates:
 			_, ok := update.(*imapClient.MailboxUpdate)
 			if ok {
-				log.Println("Got Mailbox update")
-				for _, msg := range client.FetchUnseenMsgs() {
-					msgs <- msg
-				}
+				break waitLoop
 			}
 		case err := <-done:
 			if err != nil {
 				log.Fatal(err)
 			}
 			log.Println("No idling anymore")
-			return
+			break waitLoop
 		}
 	}
 
+	close(stop)
+	<-done
 }
 
 // FetchUnseenMsgs ...
