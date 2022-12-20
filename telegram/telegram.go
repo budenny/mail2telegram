@@ -29,12 +29,24 @@ type reqBody struct {
 	ParseMode string `json:"parse_mode"`
 }
 
+func ensureTruncated(s string, maxLen int) string {
+	if len(s) >= maxLen {
+		delim := "\n\n...\n\n"
+		nDelim := len(delim)
+		return s[:maxLen/2-nDelim] + delim + s[len(s)-maxLen/2+nDelim:]
+	}
+	return s
+}
+
 // SendMessage ...
 func (api *API) SendMessage(text string) {
 
 	// odd numbers of "_" break Telegram parser in "markdown" mode
 	// so let's workarund it
 	text = strings.Replace(text, "_", "\\_", -1)
+
+	// Telegram API doesn't allow messages longer than 4000 chars
+	text = ensureTruncated(text, 4000)
 
 	req := &reqBody{
 		ChatID:    api.chatID,
